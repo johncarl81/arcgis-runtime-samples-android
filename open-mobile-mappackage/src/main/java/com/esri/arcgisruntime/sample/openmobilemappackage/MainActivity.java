@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private static String filename;
     private static String mmpkFilePath;
     private MapView mMapView;
-    private MobileMapPackage mapPackage;
+    private static ArcGISMap mmpkMap;
 
     // define permission to request
     String[] reqPermission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Create the mobile map package file location and name structure
      */
-    private static String createMobileMapPackageFilePath(){
+    private static String createMobileMapPackageFilePath() {
         return extStorDir.getAbsolutePath() + File.separator + extSDCardDirName + File.separator + filename + FILE_EXTENSION;
     }
 
@@ -73,9 +73,9 @@ public class MainActivity extends AppCompatActivity {
         mMapView = (MapView) findViewById(R.id.mapView);
 
         // For API level 23+ request permission at runtime
-        if(ContextCompat.checkSelfPermission(MainActivity.this, reqPermission[0]) == PackageManager.PERMISSION_GRANTED){
+        if (ContextCompat.checkSelfPermission(MainActivity.this, reqPermission[0]) == PackageManager.PERMISSION_GRANTED) {
             loadMobileMapPackage(mmpkFilePath);
-        }else{
+        } else {
             // request permission
             ActivityCompat.requestPermissions(MainActivity.this, reqPermission, requestCode);
         }
@@ -86,10 +86,10 @@ public class MainActivity extends AppCompatActivity {
      * Handle the permissions request response
      *
      */
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults){
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             loadMobileMapPackage(mmpkFilePath);
-        }else{
+        } else {
             // report to user that permission was denied
             Toast.makeText(MainActivity.this, getResources().getString(R.string.location_permission_denied),
                     Toast.LENGTH_SHORT).show();
@@ -101,38 +101,43 @@ public class MainActivity extends AppCompatActivity {
      *
      * @param mmpkFile Full path to mmpk file
      */
-    private void loadMobileMapPackage(String mmpkFile){
+    private void loadMobileMapPackage(String mmpkFile) {
         //[DocRef: Name=Open Mobile Map Package-android, Category=Work with maps, Topic=Create an offline map]
         // create the mobile map package
-        mapPackage = new MobileMapPackage(mmpkFile);
-        // load the mobile map package asynchronously
-        mapPackage.loadAsync();
+        if (mmpkMap == null) {
+            final MobileMapPackage mapPackage = new MobileMapPackage(mmpkFile);
+            // load the mobile map package asynchronously
+            mapPackage.loadAsync();
 
-        // add done listener which will invoke when mobile map package has loaded
-        mapPackage.addDoneLoadingListener(new Runnable() {
-            @Override
-            public void run() {
-                // check load status and that the mobile map package has maps
-                if(mapPackage.getLoadStatus() == LoadStatus.LOADED && mapPackage.getMaps().size() > 0){
-                    // add the map from the mobile map package to the MapView
-                    mMapView.setMap(mapPackage.getMaps().get(0));
-                }else{
-                    // Log an issue if the mobile map package fails to load
-                    Log.e(TAG, mapPackage.getLoadError().getMessage());
+            // add done listener which will invoke when mobile map package has loaded
+            mapPackage.addDoneLoadingListener(new Runnable() {
+                @Override
+                public void run() {
+                    // check load status and that the mobile map package has maps
+                    if (mapPackage.getLoadStatus() == LoadStatus.LOADED && mapPackage.getMaps().size() > 0) {
+                        // add the map from the mobile map package to the MapView
+                        mmpkMap = mapPackage.getMaps().get(0);
+                        mMapView.setMap(mmpkMap);
+                    } else {
+                        // Log an issue if the mobile map package fails to load
+                        Log.e(TAG, mapPackage.getLoadError().getMessage());
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            mMapView.setMap(mmpkMap);
+        }
         //[DocRef: END]
     }
 
     @Override
-    protected void onPause(){
+    protected void onPause() {
         super.onPause();
         mMapView.pause();
     }
 
     @Override
-    protected void onResume(){
+    protected void onResume() {
         super.onResume();
         mMapView.resume();
     }
